@@ -37,7 +37,7 @@ If you are reporting a bug:
 
 TBA
 
-Locust-S3 follows [Python PEP8] (https://www.python.org/dev/peps/pep-0008/).
+Locust-S3 follows [Python PEP8](https://www.python.org/dev/peps/pep-0008/).
 
 ## Core Team Process
 
