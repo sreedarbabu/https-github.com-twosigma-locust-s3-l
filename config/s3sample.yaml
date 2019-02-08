@@ -1,0 +1,237 @@
+# coding: utf-8
+
+# Copyright 2019 TWO SIGMA OPEN SOURCE, LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+locust :
+  # report time resolution
+  # optional
+  # default value is 1000000 (report in microsecond). another common value is 1000 with millisecond resolution.
+  time_resolution : 1000000
+
+# cache server information.
+# this section is optional if there is no GET/HEAD/DELETE operations and option cache_result is False
+# no default value
+cache :
+  # this value could be override by optional environment variable LT_CACHE_SERVER
+  server : localhost
+  # this value could be override by optional environment variable LT_CACHE_SERV_PORT
+  port : '6379'
+  # this value could be override by optional environment variable LT_CACHE_SERV_DB
+  db : '0'
+
+# counter server is used to store special counters information
+# this section is optional if there is no put limit option
+# no default value
+counter :
+  server : localhost
+  port : '6379'
+  # there is a very subtle bug here. if counter and cache share same REDIS instance and were put into different DB.
+  # when REDIS is full, REDIS will purge each DB and since counter DB only has small number of keys, we lose keys here.
+  # if we put counter and cache in same DB, these counters are heavily used and will never get purged.
+  db : '0'
+
+s3 :
+  # s3 endpoint. this must be specified even it could be override later.
+  # this value could be override by environment variable S3_ENDPOINT if have
+  endpoint : http://localhost:9000
+
+  # S3 signature method,
+  # optional
+  # default value is s3 for SigV2. could also be s3v4 for SigV4.
+  signature_version : s3
+
+  # s3 style to derive bucket name
+  # optional.
+  # default to path if not specified.
+  addressing_style : path
+
+  # setup a proxy for http & https.
+  # optional
+  # default is no proxy
+  # proxy :
+  #   http : localhost:8080
+  #   https : localhost:8081
+
+  # s3 access key and secret
+  # this value could be override by environment variable S3_ACCESS_KEY if have
+  access_key : foo
+  # this value could be override by environment variable S3_ACCESS_SECRET if have
+  access_secret : bar
+
+data :
+  # this decide if locust caches the object key somewhere. a redis cache with valid object information is needed if we
+  # plan to do HEAD/GET/DELETE requests later.
+  # this also require the cache server section. default is False
+  cache_result : False
+
+  # enable this will have locust to record the content checksum and verify it
+  # in get object call. this will slowdown the test so do not enable it for performance test. this is more for data integrity
+  # verification tests
+  # optional
+  # default to be False.
+  integrity_check : True
+
+  # lists all the buckets that locust will use. locust will randomly pick one for upload.
+  # this is needed if there is any bucket operation and PUT object operation
+  # no default value
+  buckets :
+    - test-bucket-1
+    - test-bucket-2
+
+  # whether create bucket at the start.
+  # - if try to write to a new bucket, this needs to be True.
+  # - if writing to a bucket already owned by locust role account, this can be either True or False.
+  # - if bucket is not owned by locust role account but can access, this need to be false.
+  # default value is False
+  create_bucket_on_start : False
+
+  # this is the object name prefix. it has to have oen and only one '-' at the end.
+  # needed if there is PUT object requests.
+  # no default value
+  object_prefix : obj-
+
+  # object size option. valid values are low_bound and random.
+  # low_bound will always pick the low bound value. this is good for testing with certain fixed size
+  # random is just random. good for fuzzy test
+  # needed if there is PUT object requests.
+  # no default value
+  sizing_option : random
+
+  # define the range of size and weights. each range has
+  # - an ID (value does not matter, should be a human readable string),
+  # - a weight. higher weight range will have higher chance to be selected.
+  # - low and high range values.
+  #     value could be number without unit, which has default unit of bytes.
+  #     value could also be specified with unit like K, M, G, or KB, MB, GB with 1K = 1KB = 1000
+  #     value could also be specified with unit like Ki, Mi, Gi or KiB, MiB, GiB with 1Ki = 1KiB = 1024
+  #     unit for the value is case insensitive
+  # ideally these ranges shall not overlap with each other.
+  # needed if there is PUT object requests.
+  # no default value
+  weights :
+    <1kiB:
+      WEIGHT: 1
+      LOW: 0
+      HIGH: 1024
+    1~2kiB:
+      WEIGHT: 1
+      LOW: 1024
+      HIGH: 2048
+    2~4kiB:
+      WEIGHT: 1
+      LOW: 2048
+      HIGH: 4096
+    4~8kiB:
+      WEIGHT: 1
+      LOW: 4096
+      HIGH: 8192
+    8~16kiB:
+      WEIGHT: 1
+      LOW: 8192
+      HIGH: 16Ki
+    16~32kiB:
+      WEIGHT: 1
+      LOW: 16ki
+      HIGH: 32ki
+    32~64kiB:
+      WEIGHT: 1
+      LOW: 32ki
+      HIGH: 64ki
+    64~128kiB:
+      WEIGHT: 1
+      LOW: 64ki
+      HIGH: 128ki
+    128~256kiB:
+      WEIGHT: 1
+      LOW: 128Ki
+      HIGH: 256Ki
+    256~512kiB:
+      WEIGHT: 1
+      LOW: 256Ki
+      HIGH: 512Ki
+    512~1024kiB:
+      WEIGHT: 1
+      LOW: 512Ki
+      HIGH: 1mi
+    1~2MiB:
+      WEIGHT: 1
+      LOW: 1Mib
+      HIGH: 2Mi
+    2~4MiB:
+      WEIGHT: 1
+      LOW: 2Mi
+      HIGH: 4mi
+    4~8MiB:
+      WEIGHT: 1
+      LOW: 4mi
+      HIGH: 8mi
+    8~16MiB:
+      WEIGHT: 1
+      LOW: 8mi
+      HIGH: 16mi
+    16~32MiB:
+      WEIGHT: 1
+      LOW: 16mi
+      HIGH: 32mi
+    32~64MiB:
+      WEIGHT: 1
+      LOW: 32mi
+      HIGH: 64mi
+    64~128MiB:
+      WEIGHT: 1
+      LOW: 64mi
+      HIGH: 128mi
+    128~256MiB:
+      WEIGHT: 1
+      LOW: 128Mi
+      HIGH: 256Mi
+    256~512MiB:
+      WEIGHT: 1
+      LOW: 256MiB
+      HIGH: 512MiB
+
+ops :
+  # decide how frequent each virtual user will send out different types of requests
+  # not optional and no default value
+  weights :
+    get_service : 1
+    put_object : 0
+    get_object : 0
+    head_object : 0
+    delete_object : 0
+
+  get_object :
+    # whether force to use single thread in get. Boto3 use S3Transfer which
+    # potentially use multiple thread and range GET.
+    threading : False
+
+  put_object :
+    limit :
+      # a special option to limit amount of objects being uploaded.
+      # optional.
+      # default value is False
+      limited : True
+      # this is the key name locust used to check accumulated uploaded size
+      # this is optional if limited is False.
+      # no default value. try to use unique counter name as key to avoid conflict
+      size_counter : unique_size_counter
+      # this is the accumulated uploaded amount limit.
+      # this is optional if limited is False.
+      # no default value.
+      # value could be number without unit, which has default unit of bytes.
+      # value could also be specified with unit like K, M, G, or KB, MB, GB with 1K = 1KB = 1000
+      # value could also be specified with unit like Ki, Mi, Gi or KiB, MiB, GiB with 1Ki = 1KiB = 1024
+      # unit for the value is case insensitive
+      size_limit : 2Ti
