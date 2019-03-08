@@ -25,7 +25,7 @@ official AWS S3 Python SDK [`Boto3`](https://aws.amazon.com/sdk-for-python).
 - Scalable. `Locust` is a scalable load test framework.
 - Highly customizable. There are many parameters could be customized.
 - Open source. `Locust-S3` comes with Apache License.
-- Extensible. New behaviors could be introduced by writing simple python mode.
+- Extensible. New behaviors could be introduced by writing simple python code.
 
 ## Installation
 
