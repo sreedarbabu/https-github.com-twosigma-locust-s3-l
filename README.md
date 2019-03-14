@@ -58,5 +58,5 @@ to different formats. Please check `Locust` [documentation](https://docs.locust.
 This is an example on running `Locust` locally without UI for 20 seconds with 10 clients.
 
 ```
-LOCUST_CONFIG=config/getservicetest.yaml locust -f locustfiles/s3.py  --no-web -c 10 -r 10 -t 20s --only-summary -L WARNING --csv=res.csv
+LOCUST_CONFIG=config/getservicetest.yaml locust -f locustfiles/python/s3.py  --no-web -c 10 -r 10 -t 20s --only-summary -L WARNING --csv=res.csv
 ```
