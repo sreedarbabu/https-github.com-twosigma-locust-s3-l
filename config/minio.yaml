@@ -66,7 +66,7 @@ s3 :
 
   # s3 access key and secret
   # this value could be override by environment variable S3_ACCESS_KEY if have
-  access_key : foo
+  access_key : foo 
   # this value could be override by environment variable S3_ACCESS_SECRET if have
   access_secret : bar
 
@@ -140,67 +140,7 @@ data :
     8~16kiB:
       WEIGHT: 1
       LOW: 8192
-      HIGH: 16Ki
-    16~32kiB:
-      WEIGHT: 1
-      LOW: 16ki
-      HIGH: 32ki
-    32~64kiB:
-      WEIGHT: 1
-      LOW: 32ki
-      HIGH: 64ki
-    64~128kiB:
-      WEIGHT: 1
-      LOW: 64ki
-      HIGH: 128ki
-    128~256kiB:
-      WEIGHT: 1
-      LOW: 128Ki
-      HIGH: 256Ki
-    256~512kiB:
-      WEIGHT: 1
-      LOW: 256Ki
-      HIGH: 512Ki
-    512~1024kiB:
-      WEIGHT: 1
-      LOW: 512Ki
-      HIGH: 1mi
-    1~2MiB:
-      WEIGHT: 1
-      LOW: 1Mib
-      HIGH: 2Mi
-    2~4MiB:
-      WEIGHT: 1
-      LOW: 2Mi
-      HIGH: 4mi
-    4~8MiB:
-      WEIGHT: 1
-      LOW: 4mi
-      HIGH: 8mi
-    8~16MiB:
-      WEIGHT: 1
-      LOW: 8mi
-      HIGH: 16mi
-    16~32MiB:
-      WEIGHT: 1
-      LOW: 16mi
-      HIGH: 32mi
-    32~64MiB:
-      WEIGHT: 1
-      LOW: 32mi
-      HIGH: 64mi
-    64~128MiB:
-      WEIGHT: 1
-      LOW: 64mi
-      HIGH: 128mi
-    128~256MiB:
-      WEIGHT: 1
-      LOW: 128Mi
-      HIGH: 256Mi
-    256~512MiB:
-      WEIGHT: 1
-      LOW: 256MiB
-      HIGH: 512MiB
+      HIGH: 16384
 
 ops :
   # decide how frequent each virtual user will send out different types of requests

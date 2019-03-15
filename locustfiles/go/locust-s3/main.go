@@ -1,10 +1,27 @@
+/*
+Copyright 2019 TWO SIGMA OPEN SOURCE, LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
+
 package main
 
 import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"os"
+
+	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -14,12 +31,7 @@ import (
 	"github.com/myzhan/boomer"
 )
 
-var verbose = false
 var region = "dumpster"
-var accessKey = os.Getenv("LOCUST_S3_ACCESS_KEY")
-var accessSecret = os.Getenv("LOCUST_S3_ACCESS_SECRET")
-var endPoint = os.Getenv("LOCUST_S3_ENDPOINT")
-var bucket = "locust-s3-benchmark-bucket"
 var key = "test1"
 var objectSize = 1024
 
@@ -28,8 +40,8 @@ var bufferBytes []byte
 
 func initS3Session() *session.Session {
 	s3Session, err := session.NewSession(&aws.Config{
-		Endpoint:         aws.String(endPoint),
-		Credentials:      credentials.NewStaticCredentials(accessKey, accessSecret, ""),
+		Endpoint:         aws.String(config.LoadConf.S3.Endpoint),
+		Credentials:      credentials.NewStaticCredentials(config.LoadConf.S3.AccessKey, config.LoadConf.S3.AccessSecret, ""),
 		Region:           aws.String(region),
 		S3ForcePathStyle: aws.Bool(true)},
 	)
@@ -41,16 +53,17 @@ func initS3Session() *session.Session {
 
 func initBucket() {
 	svc := s3.New(sharedS3Session)
-	_, err := svc.CreateBucket(&s3.CreateBucketInput{
-		Bucket: aws.String(bucket),
-	})
-	if err != nil {
-		if aerr, ok := err.(awserr.Error); ok {
-			switch aerr.Code() {
-			case s3.ErrCodeBucketAlreadyOwnedByYou:
-				fmt.Println(s3.ErrCodeBucketAlreadyOwnedByYou, aerr.Error())
-			default:
-				panic(aerr.Error())
+	if config.LoadConf.Data.CreateBucketOnStart {
+		for _, b := range config.LoadConf.Data.Buckets {
+			if _, err := svc.CreateBucket(&s3.CreateBucketInput{Bucket: aws.String(b)}); err != nil {
+				if aerr, ok := err.(awserr.Error); ok {
+					switch aerr.Code() {
+					case s3.ErrCodeBucketAlreadyOwnedByYou:
+						fmt.Println(s3.ErrCodeBucketAlreadyOwnedByYou, aerr.Error())
+					default:
+						panic(aerr.Error())
+					}
+				}
 			}
 		}
 	}
@@ -58,8 +71,7 @@ func initBucket() {
 
 func initEnvironment() {
 	bufferBytes = make([]byte, objectSize, objectSize)
-	_, err := rand.Read(bufferBytes)
-	if err != nil {
+	if _, err := rand.Read(bufferBytes); err != nil {
 		panic("could not initiate buffer")
 	}
 }
@@ -75,7 +87,7 @@ func getService() {
 		boomer.RecordFailure("s3", "getService", elapsed, "err")
 	} else {
 		boomer.RecordSuccess("s3", "getService", elapsed, int64(10))
-		if verbose {
+		if config.Verbose {
 			for _, b := range result.Buckets {
 				fmt.Printf("* %s created on %s\n",
 					aws.StringValue(b.Name), aws.TimeValue(b.CreationDate))
@@ -89,7 +101,7 @@ func putObject() {
 
 	start := boomer.Now()
 	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:        aws.String(bucket),
+		Bucket:        aws.String(config.LoadConf.Data.Buckets[0]),
 		Key:           aws.String(key),
 		Body:          bytes.NewReader(bufferBytes),
 		ContentLength: aws.Int64(int64(objectSize)),
@@ -112,7 +124,7 @@ func getObject() {
 
 	start := boomer.Now()
 	resp, err := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(config.LoadConf.Data.Buckets[0]),
 		Key:    aws.String(key),
 	})
 	elapsed := boomer.Now() - start
@@ -128,7 +140,9 @@ func deleteObject() {
 	svc := s3.New(sharedS3Session)
 
 	start := boomer.Now()
-	_, err := svc.DeleteObject(&s3.DeleteObjectInput{Bucket: aws.String(bucket), Key: aws.String(key)})
+	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(config.LoadConf.Data.Buckets[0]),
+		Key:    aws.String(key)})
 	elapsed := boomer.Now() - start
 
 	if err != nil {
@@ -139,28 +153,30 @@ func deleteObject() {
 }
 
 func main() {
+	// configuration need to be load asap
+	config.LoadConf.GetConf()
 	sharedS3Session = initS3Session()
 	initEnvironment()
 	initBucket()
 
 	taskGetService := &boomer.Task{
 		Name:   "getService",
-		Weight: 1,
+		Weight: config.LoadConf.Ops.Weights.GetService,
 		Fn:     getService,
 	}
 	taskPutObject := &boomer.Task{
 		Name:   "putObject",
-		Weight: 1,
+		Weight: config.LoadConf.Ops.Weights.PutObject,
 		Fn:     putObject,
 	}
 	taskGetObject := &boomer.Task{
 		Name:   "getObject",
-		Weight: 1,
+		Weight: config.LoadConf.Ops.Weights.GetObject,
 		Fn:     getObject,
 	}
 	taskDeleteObject := &boomer.Task{
 		Name:   "deleteObject",
-		Weight: 1,
+		Weight: config.LoadConf.Ops.Weights.DeleteObject,
 		Fn:     deleteObject,
 	}
 	boomer.Run(taskGetService, taskGetObject, taskPutObject, taskDeleteObject)
