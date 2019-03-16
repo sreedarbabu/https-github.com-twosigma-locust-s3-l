@@ -52,7 +52,7 @@ const objectKeyLen = 16
 func (o *ObjectSpec) GetObject(operation operationType) error {
 	switch operation {
 	case Write:
-		o.ObjectBucket = config.LoadConf.Data.Buckets[rand.Intn(bucketCount-1)]
+		o.ObjectBucket = config.LoadConf.Data.Buckets[rand.Intn(bucketCount)]
 		o.ObjectKey = fmt.Sprintf("%s%s", config.LoadConf.Data.ObjectPrefix,
 			randstr.RandStringBytesMaskImprSrc(objectKeyLen))
 		o.ObjectSize = 1024
