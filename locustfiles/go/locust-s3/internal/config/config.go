@@ -147,3 +147,7 @@ func (c *LocustS3Configuration) GetConf() *LocustS3Configuration {
 
 // LoadConf will hold an immutable copy of configuration
 var LoadConf LocustS3Configuration
+
+func init() {
+	LoadConf.GetConf()
+}

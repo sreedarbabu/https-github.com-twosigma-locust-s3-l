@@ -210,9 +210,6 @@ func deleteObject() {
 }
 
 func main() {
-	// configuration need to be load asap
-	config.LoadConf.GetConf()
-	objfactory.InitializeObjectFactory()
 	sharedS3Session = initS3Session()
 	initBuckets()
 
