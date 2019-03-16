@@ -28,13 +28,11 @@ import (
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/randstr"
 )
 
-type operationType int
-
 // Object operation type
 const (
-	Write  operationType = 0
-	Read   operationType = 1
-	Delete operationType = 2
+	Write = iota
+	Read
+	Delete
 )
 
 // ObjectSpec prepare an object for certain operations
@@ -43,13 +41,13 @@ type ObjectSpec struct {
 	ObjectKey    string
 	ObjectSize   uint64
 	ObjectData   []byte
-	operation    operationType
+	operation    int
 }
 
 const objectKeyLen = 16
 
 // GetObject will initialize an object for certain operation
-func (o *ObjectSpec) GetObject(operation operationType) error {
+func (o *ObjectSpec) GetObject(operation int) error {
 	switch operation {
 	case Write:
 		o.ObjectBucket = config.LoadConf.Data.Buckets[rand.Intn(bucketCount)]
@@ -89,8 +87,7 @@ var bufferBytes []byte
 var bucketCount int
 var redisClient *redis.Client
 
-// InitializeObjectFactory initialize the object factory
-func InitializeObjectFactory() {
+func init() {
 	bucketCount = len(config.LoadConf.Data.Buckets)
 
 	bufferBytes = make([]byte, 1024, 1024)
