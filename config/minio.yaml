@@ -74,7 +74,7 @@ data :
   # this decide if locust caches the object key somewhere. a redis cache with valid object information is needed if we
   # plan to do HEAD/GET/DELETE requests later.
   # this also require the cache server section. default is False
-  cache_result : False
+  cache_result : True
 
   # enable this will have locust to record the content checksum and verify it
   # in get object call. this will slowdown the test so do not enable it for performance test. this is more for data integrity
@@ -146,11 +146,11 @@ ops :
   # decide how frequent each virtual user will send out different types of requests
   # not optional and no default value
   weights :
-    get_service : 1
-    put_object : 0
-    get_object : 0
-    head_object : 0
-    delete_object : 0
+    get_service : 0
+    put_object : 1
+    get_object : 1
+    head_object : 1
+    delete_object : 1
 
   get_object :
     # whether force to use single thread in get. Boto3 use S3Transfer which

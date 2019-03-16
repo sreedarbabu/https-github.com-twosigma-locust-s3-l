@@ -18,10 +18,11 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
+	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/objfactory"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -32,11 +33,8 @@ import (
 )
 
 var region = "dumpster"
-var key = "test1"
-var objectSize = 1024
 
 var sharedS3Session *session.Session
-var bufferBytes []byte
 
 func initS3Session() *session.Session {
 	s3Session, err := session.NewSession(&aws.Config{
@@ -51,7 +49,7 @@ func initS3Session() *session.Session {
 	return s3Session
 }
 
-func initBucket() {
+func initBuckets() {
 	svc := s3.New(sharedS3Session)
 	if config.LoadConf.Data.CreateBucketOnStart {
 		for _, b := range config.LoadConf.Data.Buckets {
@@ -69,13 +67,6 @@ func initBucket() {
 	}
 }
 
-func initEnvironment() {
-	bufferBytes = make([]byte, objectSize, objectSize)
-	if _, err := rand.Read(bufferBytes); err != nil {
-		panic("could not initiate buffer")
-	}
-}
-
 func getService() {
 	svc := s3.New(sharedS3Session)
 
@@ -84,7 +75,7 @@ func getService() {
 	elapsed := boomer.Now() - start
 
 	if err != nil {
-		boomer.RecordFailure("s3", "getService", elapsed, "err")
+		boomer.RecordFailure("s3", "getService", elapsed, err.Error())
 	} else {
 		boomer.RecordSuccess("s3", "getService", elapsed, int64(10))
 		if config.Verbose {
@@ -99,12 +90,18 @@ func getService() {
 func putObject() {
 	svc := s3.New(sharedS3Session)
 
+	var obj objfactory.ObjectSpec
+	if err := obj.GetObject(objfactory.Write); err != nil {
+		time.Sleep(1000 * time.Millisecond)
+		return
+	}
+
 	start := boomer.Now()
 	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:        aws.String(config.LoadConf.Data.Buckets[0]),
-		Key:           aws.String(key),
-		Body:          bytes.NewReader(bufferBytes),
-		ContentLength: aws.Int64(int64(objectSize)),
+		Bucket:        aws.String(obj.ObjectBucket),
+		Key:           aws.String(obj.ObjectKey),
+		Body:          bytes.NewReader(obj.ObjectData),
+		ContentLength: aws.Int64(int64(obj.ObjectSize)),
 		ContentType:   aws.String("binary/octet-stream"),
 	})
 	// Disable payload checksum calculation (very expensive)
@@ -113,51 +110,111 @@ func putObject() {
 	elapsed := boomer.Now() - start
 
 	if err != nil {
-		boomer.RecordFailure("s3", "putObject", elapsed, "err")
+		boomer.RecordFailure("s3", "putObject", elapsed, err.Error())
 	} else {
-		boomer.RecordSuccess("s3", "putObject", elapsed, int64(objectSize))
+		boomer.RecordSuccess("s3", "putObject", elapsed, int64(obj.ObjectSize))
+		if config.Verbose {
+			fmt.Printf("put object %s/%s with size %d\n", obj.ObjectBucket, obj.ObjectKey, obj.ObjectSize)
+		}
 	}
+	obj.ReleaseObject(err)
 }
 
 func getObject() {
 	svc := s3.New(sharedS3Session)
 
+	var obj objfactory.ObjectSpec
+	if err := obj.GetObject(objfactory.Read); err != nil {
+		if config.Verbose {
+			fmt.Println("no object for get operation from cache, will sleeep 1sec and retry")
+		}
+		time.Sleep(1000 * time.Millisecond)
+		return
+	}
+
 	start := boomer.Now()
 	resp, err := svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(config.LoadConf.Data.Buckets[0]),
-		Key:    aws.String(key),
+		Bucket: aws.String(obj.ObjectBucket),
+		Key:    aws.String(obj.ObjectKey),
 	})
 	elapsed := boomer.Now() - start
 
 	if err != nil {
-		boomer.RecordFailure("s3", "getObject", elapsed, "err")
+		boomer.RecordFailure("s3", "getObject", elapsed, err.Error())
 	} else {
 		boomer.RecordSuccess("s3", "getObject", elapsed, *resp.ContentLength)
+		if config.Verbose {
+			fmt.Printf("get object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
+		}
 	}
+	obj.ReleaseObject(err)
+}
+
+func headObject() {
+	svc := s3.New(sharedS3Session)
+
+	var obj objfactory.ObjectSpec
+	if err := obj.GetObject(objfactory.Read); err != nil {
+		if config.Verbose {
+			fmt.Println("no object for head operation from cache, will sleeep 1sec and retry")
+		}
+		time.Sleep(1000 * time.Millisecond)
+		return
+	}
+
+	start := boomer.Now()
+	resp, err := svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(obj.ObjectBucket),
+		Key:    aws.String(obj.ObjectKey),
+	})
+	elapsed := boomer.Now() - start
+
+	if err != nil {
+		boomer.RecordFailure("s3", "headObject", elapsed, err.Error())
+	} else {
+		boomer.RecordSuccess("s3", "headObject", elapsed, *resp.ContentLength)
+		if config.Verbose {
+			fmt.Printf("head object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
+		}
+	}
+	obj.ReleaseObject(err)
 }
 
 func deleteObject() {
 	svc := s3.New(sharedS3Session)
 
+	var obj objfactory.ObjectSpec
+	if err := obj.GetObject(objfactory.Delete); err != nil {
+		if config.Verbose {
+			fmt.Println("no object for delete operation from cache, will sleeep 1sec and retry")
+		}
+		time.Sleep(1000 * time.Millisecond)
+		return
+	}
+
 	start := boomer.Now()
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
-		Bucket: aws.String(config.LoadConf.Data.Buckets[0]),
-		Key:    aws.String(key)})
+		Bucket: aws.String(obj.ObjectBucket),
+		Key:    aws.String(obj.ObjectKey)})
 	elapsed := boomer.Now() - start
 
 	if err != nil {
-		boomer.RecordFailure("s3", "deleteObject", elapsed, "err")
+		boomer.RecordFailure("s3", "deleteObject", elapsed, err.Error())
 	} else {
 		boomer.RecordSuccess("s3", "deleteObject", elapsed, int64(10))
+		if config.Verbose {
+			fmt.Printf("delete object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
+		}
 	}
+	obj.ReleaseObject(err)
 }
 
 func main() {
 	// configuration need to be load asap
 	config.LoadConf.GetConf()
+	objfactory.InitializeObjectFactory()
 	sharedS3Session = initS3Session()
-	initEnvironment()
-	initBucket()
+	initBuckets()
 
 	taskGetService := &boomer.Task{
 		Name:   "getService",
@@ -179,5 +236,10 @@ func main() {
 		Weight: config.LoadConf.Ops.Weights.DeleteObject,
 		Fn:     deleteObject,
 	}
-	boomer.Run(taskGetService, taskGetObject, taskPutObject, taskDeleteObject)
+	taskHeadObject := &boomer.Task{
+		Name:   "headObject",
+		Weight: config.LoadConf.Ops.Weights.HeadObject,
+		Fn:     headObject,
+	}
+	boomer.Run(taskGetService, taskGetObject, taskPutObject, taskDeleteObject, taskHeadObject)
 }

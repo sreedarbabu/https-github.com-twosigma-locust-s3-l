@@ -104,7 +104,7 @@ func (c *LocustS3Configuration) GetConf() *LocustS3Configuration {
 		c.Cache.Port = value
 	}
 	if value, present = os.LookupEnv("LT_CACHE_SERV_DB"); present {
-		c.Cache.Port = value
+		c.Cache.Db = value
 	}
 	if value, present = os.LookupEnv("S3_ENDPOINT"); present {
 		c.S3.Endpoint = value
