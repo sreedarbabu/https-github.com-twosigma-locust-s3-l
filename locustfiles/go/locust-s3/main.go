@@ -17,7 +17,6 @@ Copyright 2019 TWO SIGMA OPEN SOURCE, LLC
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -89,7 +88,6 @@ func getService() {
 
 func putObject() {
 	svc := s3.New(sharedS3Session)
-
 	var obj objfactory.ObjectSpec
 	if err := obj.GetObject(objfactory.Write); err != nil {
 		time.Sleep(1000 * time.Millisecond)
@@ -100,7 +98,7 @@ func putObject() {
 	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:        aws.String(obj.ObjectBucket),
 		Key:           aws.String(obj.ObjectKey),
-		Body:          bytes.NewReader(obj.ObjectData),
+		Body:          obj.ObjectData,
 		ContentLength: aws.Int64(int64(obj.ObjectSize)),
 		ContentType:   aws.String("binary/octet-stream"),
 	})
@@ -111,10 +109,13 @@ func putObject() {
 
 	if err != nil {
 		boomer.RecordFailure("s3", "putObject", elapsed, err.Error())
+		if config.Verbose {
+			fmt.Printf("put object %s/%s with size %d fail\n", obj.ObjectBucket, obj.ObjectKey, obj.ObjectSize)
+		}
 	} else {
 		boomer.RecordSuccess("s3", "putObject", elapsed, int64(obj.ObjectSize))
 		if config.Verbose {
-			fmt.Printf("put object %s/%s with size %d\n", obj.ObjectBucket, obj.ObjectKey, obj.ObjectSize)
+			fmt.Printf("put object %s/%s with size %d succ\n", obj.ObjectBucket, obj.ObjectKey, obj.ObjectSize)
 		}
 	}
 	obj.ReleaseObject(err)

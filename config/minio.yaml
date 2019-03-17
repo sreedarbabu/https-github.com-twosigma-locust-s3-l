@@ -95,7 +95,7 @@ data :
   # - if writing to a bucket already owned by locust role account, this can be either True or False.
   # - if bucket is not owned by locust role account but can access, this need to be false.
   # default value is False
-  create_bucket_on_start : False
+  create_bucket_on_start : True
 
   # this is the object name prefix. it has to have oen and only one '-' at the end.
   # needed if there is PUT object requests.
@@ -146,7 +146,7 @@ ops :
   # decide how frequent each virtual user will send out different types of requests
   # not optional and no default value
   weights :
-    get_service : 0
+    get_service : 1
     put_object : 1
     get_object : 1
     head_object : 1
