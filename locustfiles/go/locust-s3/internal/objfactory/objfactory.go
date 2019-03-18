@@ -21,6 +21,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"strings"
 
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/randstr"
@@ -45,14 +46,33 @@ type ObjectSpec struct {
 const objectKeyLen = 16
 
 var bucketCount int
+var sizeWeight []string
+var sizeWeightLen int
 
 func init() {
 	bucketCount = len(config.LoadConf.Data.Buckets)
+	for k, v := range config.LoadConf.Data.Weights {
+		var b []string
+		b = make([]string, v["WEIGHT"])
+		for i := 0; i < int(v["WEIGHT"]); i++ {
+			b[i] = k
+		}
+		sizeWeight = append(sizeWeight, b...)
+	}
+	sizeWeightLen = len(sizeWeight)
 }
 
 func objSizeViaPolicy() int64 {
-	// FIXME
-	return int64(rand.Intn(40960))
+	rangePicked := rand.Intn(sizeWeightLen)
+	r := config.LoadConf.Data.Weights[sizeWeight[rangePicked]]
+	switch strings.ToLower(config.LoadConf.Data.SizingOption) {
+	case "random":
+		return int64(r["LOW"]) + int64(rand.Intn(int(r["HIGH"]-r["LOW"])))
+	case "low_bound":
+		return int64(r["LOW"])
+	default:
+		panic("unknown sizing option")
+	}
 }
 
 // GetObject will initialize an object for certain operation
