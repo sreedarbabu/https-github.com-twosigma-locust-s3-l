@@ -36,7 +36,7 @@ var Verbose = true
 // LocustS3Configuration is the corresponding struct for configuration
 type LocustS3Configuration struct {
 	Locust struct {
-		TimeResolution int `yaml:"time_resolution"`
+		TimeResolution int64 `yaml:"time_resolution"`
 	} `yaml:"locust"`
 	Cache struct {
 		Server string `yaml:"server"`

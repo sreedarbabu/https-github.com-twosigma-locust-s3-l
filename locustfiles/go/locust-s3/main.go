@@ -69,9 +69,9 @@ func initBuckets() {
 func getService() {
 	svc := s3.New(sharedS3Session)
 
-	start := time.Now().UnixNano() / int64(config.LoadConf.Locust.TimeResolution)
+	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
 	result, err := svc.ListBuckets(nil)
-	elapsed := time.Now().UnixNano()/int64(config.LoadConf.Locust.TimeResolution) - start
+	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
 		boomer.RecordFailure("s3", "getService", elapsed, err.Error())
@@ -94,7 +94,7 @@ func putObject() {
 		return
 	}
 
-	start := time.Now().UnixNano() / int64(config.LoadConf.Locust.TimeResolution)
+	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
 	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:        aws.String(obj.ObjectBucket),
 		Key:           aws.String(obj.ObjectKey),
@@ -105,7 +105,7 @@ func putObject() {
 	// Disable payload checksum calculation (very expensive)
 	req.HTTPRequest.Header.Add("X-Amz-Content-Sha256", "UNSIGNED-PAYLOAD")
 	err := req.Send()
-	elapsed := time.Now().UnixNano()/int64(config.LoadConf.Locust.TimeResolution) - start
+	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
 		boomer.RecordFailure("s3", "putObject", elapsed, err.Error())
@@ -133,12 +133,12 @@ func getObject() {
 		return
 	}
 
-	start := time.Now().UnixNano() / int64(config.LoadConf.Locust.TimeResolution)
+	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
 	resp, err := svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey),
 	})
-	elapsed := time.Now().UnixNano()/int64(config.LoadConf.Locust.TimeResolution) - start
+	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
 		boomer.RecordFailure("s3", "getObject", elapsed, err.Error())
@@ -163,12 +163,12 @@ func headObject() {
 		return
 	}
 
-	start := time.Now().UnixNano() / int64(config.LoadConf.Locust.TimeResolution)
+	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
 	resp, err := svc.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey),
 	})
-	elapsed := time.Now().UnixNano()/int64(config.LoadConf.Locust.TimeResolution) - start
+	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
 		boomer.RecordFailure("s3", "headObject", elapsed, err.Error())
@@ -193,11 +193,11 @@ func deleteObject() {
 		return
 	}
 
-	start := time.Now().UnixNano() / int64(config.LoadConf.Locust.TimeResolution)
+	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
 	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey)})
-	elapsed := time.Now().UnixNano()/int64(config.LoadConf.Locust.TimeResolution) - start
+	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
 		boomer.RecordFailure("s3", "deleteObject", elapsed, err.Error())
