@@ -95,6 +95,17 @@ func (c *LocustS3Configuration) GetConf() *LocustS3Configuration {
 	if err = yaml.Unmarshal(yamlFile, c); err != nil {
 		log.Fatalf("Unmarshal: %v", err)
 	}
+
+	// Python code has 1000000 at microsecond resolution.
+	switch c.Locust.TimeResolution {
+	case 1000:
+		c.Locust.TimeResolution = 1000000
+	case 1000000:
+		c.Locust.TimeResolution = 1000
+	default:
+		log.Fatalf("invalid time resolution value   #%v ", c.Locust.TimeResolution)
+	}
+
 	var value string
 	var present bool
 	if value, present = os.LookupEnv("LT_CACHE_SERVER"); present {
