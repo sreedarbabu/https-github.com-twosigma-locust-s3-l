@@ -74,7 +74,7 @@ def get_s3_client():
         service_name='s3',
         aws_access_key_id=TEST_CONFIG_S3['access_key'],
         aws_secret_access_key=TEST_CONFIG_S3['access_secret'],
-        endpoint_url=TEST_CONFIG_S3['endpoint'],
+        endpoint_url=random.choice(TEST_CONFIG_S3['endpoint']),
         config=botocore.config.Config(proxies=TEST_CONFIG_S3.get('proxy', {}),
                                       signature_version=TEST_CONFIG_S3['signature_version'],
                                       s3={'addressing_style': TEST_CONFIG_S3['addressing_style']})
@@ -89,9 +89,10 @@ def get_service(locust):
     :return: no return value
     """
     func_name = inspect.stack()[0][3]
+    s3_client = get_s3_client()
     try:
         start_time = time.time()
-        locust.s3_client.list_buckets()
+        s3_client.list_buckets()
     except Exception as exception:
         total_time = int((time.time() - start_time) * TEST_CONFIG_LOCUST['time_resolution'])
         new_e = Exception('{} fail after spending {} with {}'.format(func_name, total_time,
@@ -120,9 +121,10 @@ def put_object(locust):
             return
 
     obj = FakeObject()
+    s3_client = get_s3_client()
     start_time = time.time()
     try:
-        locust.s3_client.put_object(Bucket=obj.bucket_name, Key=obj.obj_key, Body=obj.data)
+        s3_client.put_object(Bucket=obj.bucket_name, Key=obj.obj_key, Body=obj.data)
     except Exception as exception:
         total_time = int((time.time() - start_time) * TEST_CONFIG_LOCUST['time_resolution'])
         new_e = Exception('get fail on {}/{} after spending {} with {}'.format(obj.bucket_name,
@@ -160,6 +162,7 @@ def get_object(locust):
     if not obj_key:
         return
     bucket_name = obj_info['bucket']
+    s3_client = get_s3_client()
     start_time = time.time()
     len_range = 'UNKNOWN'
     try:
@@ -169,8 +172,8 @@ def get_object(locust):
         obj = fakefile.EgressObject(content_digest=check_integrity)
         threading = TEST_COFNIG_OPS_GET_OBJ.get('threading', False)
         config = TransferConfig(use_threads=threading)
-        locust.s3_client.download_fileobj(Bucket=bucket_name, Key=obj_key, Fileobj=obj,
-                                          Config=config)
+        s3_client.download_fileobj(Bucket=bucket_name, Key=obj_key, Fileobj=obj,
+                                   Config=config)
         object_length = len(obj)
         if check_integrity:
             if obj_info['checksum'] != obj.digest():
@@ -204,9 +207,10 @@ def head_object(locust):
     if not obj_key:
         return
     bucket_name = obj_info['bucket']
+    s3_client = get_s3_client()
     start_time = time.time()
     try:
-        locust.s3_client.head_object(Bucket=bucket_name, Key=obj_key)
+        s3_client.head_object(Bucket=bucket_name, Key=obj_key)
     except Exception as exception:
         total_time = int((time.time() - start_time) * TEST_CONFIG_LOCUST['time_resolution'])
         new_e = Exception('head fail on {}/{} after spending {} with {}'.format(bucket_name,
@@ -234,9 +238,10 @@ def delete_object(locust):
     # remove from cache asap so reduce the chance of someone else try to read it
     locust.cache.delete(obj_key)
 
+    s3_client = get_s3_client()
     start_time = time.time()
     try:
-        locust.s3_client.delete_object(Bucket=bucket_name, Key=obj_key)
+        s3_client.delete_object(Bucket=bucket_name, Key=obj_key)
     except Exception as exception:
         total_time = int((time.time() - start_time) * TEST_CONFIG_LOCUST['time_resolution'])
         new_e = Exception('delete fail on {}/{} after spending {} with {}'.format(bucket_name,
@@ -285,8 +290,6 @@ class S3Test(TaskSet):
         except Exception as _:
             pass
 
-        self.s3_client = get_s3_client()
-
     def on_start(self):
         """
         do some initialization work after __init__ and before running actual tasks
@@ -294,7 +297,7 @@ class S3Test(TaskSet):
         if TEST_CONFIG['data'].get('create_bucket_on_start', False):
             for bucket in TEST_CONFIG['data']['buckets']:
                 try:
-                    self.s3_client.create_bucket(Bucket=bucket)
+                    get_s3_client().create_bucket(Bucket=bucket)
                 except ClientError as exception:
                     if exception.response['Error']['Code'] != 'BucketAlreadyOwnedByYou':
                         raise exception
