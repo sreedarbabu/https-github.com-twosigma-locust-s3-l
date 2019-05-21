@@ -60,6 +60,7 @@ data :
 
             self.config['s3']['endpoint'] = os.getenv('S3_ENDPOINT',
                                                       self.config['s3']['endpoint'])
+            self.config['s3']['endpoint'] = [u.strip() for u in self.config['s3']['endpoint'].split(',')]
             self.config['s3']['access_key'] = os.getenv('S3_ACCESS_KEY',
                                                         self.config['s3']['access_key'])
             self.config['s3']['access_secret'] = os.getenv('S3_ACCESS_SECRET',

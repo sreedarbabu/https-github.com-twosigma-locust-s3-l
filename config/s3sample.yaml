@@ -45,7 +45,8 @@ counter :
 s3 :
   # s3 endpoint. this must be specified even it could be override later.
   # this value could be override by environment variable S3_ENDPOINT if have
-  endpoint : http://localhost:9000
+  # multiple endpoints could be specified by seperating with ,
+  endpoint : http://localhost:9000,https://localhost:9443
 
   # S3 signature method,
   # optional
