@@ -147,6 +147,7 @@ func getObject() {
 		if config.Verbose {
 			fmt.Printf("get object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
 		}
+		resp.Body.Close()
 	}
 	obj.ReleaseObject(err)
 }
