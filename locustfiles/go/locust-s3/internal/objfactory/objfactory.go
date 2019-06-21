@@ -87,6 +87,7 @@ func (o *ObjectSpec) GetObject(operation int) error {
 		o.operation = operation
 		return nil
 	case Read, Delete:
+		o.operation = operation
 		return cacheRandomPickObject(o)
 	default:
 		log.Fatalf("Unsupported operation %d", o.operation)
@@ -108,6 +109,6 @@ func (o *ObjectSpec) ReleaseObject(err error) {
 			cacheRemoveObject(o)
 		}
 	default:
-		log.Fatalf("Obejct with unsupported operation %s,%s,%d", o.ObjectBucket, o.ObjectKey, o.operation)
+		log.Fatalf("Object with unsupported operation %s,%s,%d", o.ObjectBucket, o.ObjectKey, o.operation)
 	}
 }
