@@ -37,6 +37,7 @@ var Verbose = true
 type LocustS3Configuration struct {
 	Locust struct {
 		TimeResolution int64 `yaml:"time_resolution"`
+		TimeDelay int64 `yaml:"time_delay"`
 	} `yaml:"locust"`
 	Cache struct {
 		Server string `yaml:"server"`
