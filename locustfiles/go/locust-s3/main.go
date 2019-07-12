@@ -18,6 +18,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
@@ -127,7 +128,7 @@ func getObject() {
 	var obj objfactory.ObjectSpec
 	if err := obj.GetObject(objfactory.Read); err != nil {
 		if config.Verbose {
-			fmt.Println("no object for get operation from cache, will sleeep 1sec and retry")
+			fmt.Println("no object for get operation from cache, will sleeep 1 sec and retry")
 		}
 		time.Sleep(1000 * time.Millisecond)
 		return
@@ -143,11 +144,18 @@ func getObject() {
 	if err != nil {
 		boomer.RecordFailure("s3", "getObject", elapsed, err.Error())
 	} else {
+		defer resp.Body.Close()
+		buf := make([]byte, 1048576)
+		for {
+			_, err := resp.Body.Read(buf)
+			if err == io.EOF {
+				break
+			}
+		}
 		boomer.RecordSuccess("s3", "getObject", elapsed, *resp.ContentLength)
 		if config.Verbose {
 			fmt.Printf("get object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
 		}
-		resp.Body.Close()
 	}
 	obj.ReleaseObject(err)
 }
