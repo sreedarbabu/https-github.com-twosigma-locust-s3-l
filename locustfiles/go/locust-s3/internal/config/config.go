@@ -22,12 +22,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/tonnerre/golang-pretty"
+	pretty "github.com/tonnerre/golang-pretty"
 	"gopkg.in/yaml.v2"
 )
 
 // Verbose with true will lead to more verbose debug message
-var Verbose = true
+var Verbose = false
 
 // Go unfortunately has quite poort YAML parsing support.
 // have to paste sample.yaml to https://mengzhuo.github.io/yaml-to-go/ to get this structure
@@ -37,7 +37,7 @@ var Verbose = true
 type LocustS3Configuration struct {
 	Locust struct {
 		TimeResolution int64 `yaml:"time_resolution"`
-		TimeDelay int64 `yaml:"time_delay"`
+		TimeDelay      int64 `yaml:"time_delay"`
 	} `yaml:"locust"`
 	Cache struct {
 		Server string `yaml:"server"`
@@ -161,5 +161,8 @@ func (c *LocustS3Configuration) GetConf() *LocustS3Configuration {
 var LoadConf LocustS3Configuration
 
 func init() {
+	if _, present := os.LookupEnv("LT_VERBOSE"); present {
+		Verbose = true
+	}
 	LoadConf.GetConf()
 }

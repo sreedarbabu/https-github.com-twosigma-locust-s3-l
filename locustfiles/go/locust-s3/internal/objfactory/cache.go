@@ -19,6 +19,7 @@ package objfactory
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/go-redis/redis"
@@ -36,6 +37,9 @@ func init() {
 			Password: "",
 			DB:       int(db),
 		})
+		if _, err := redisClient.Ping().Result(); err != nil {
+			log.Fatalf("failed to connect to redis with %s\n", err.Error())
+		}
 	}
 }
 
@@ -49,7 +53,9 @@ func cacheAddObject(o *ObjectSpec) {
 }
 
 func cacheRandomPickObject(o *ObjectSpec) error {
-	if redisClient != nil {
+	if redisClient == nil {
+		log.Fatalln("no cache enabled at all")
+	} else {
 		k := redisClient.RandomKey()
 		if k.Err() != redis.Nil {
 			if vals, err := redisClient.HMGet(k.Val(), "b", "k").Result(); err == nil {
@@ -58,6 +64,7 @@ func cacheRandomPickObject(o *ObjectSpec) error {
 				return nil
 			}
 		}
+		return errors.New("no key from cache")
 	}
 	return errors.New("no key from cache")
 }
