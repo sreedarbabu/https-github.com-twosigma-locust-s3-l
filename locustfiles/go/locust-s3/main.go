@@ -139,20 +139,22 @@ func getObject() {
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey),
 	})
-	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
-
 	if err != nil {
+		elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 		boomer.RecordFailure("s3", "getObject", elapsed, err.Error())
 	} else {
 		defer resp.Body.Close()
 		buf := make([]byte, 1048576)
+		length := 0
 		for {
-			_, err := resp.Body.Read(buf)
+			n, err := resp.Body.Read(buf)
+			length += n
 			if err == io.EOF {
 				break
 			}
 		}
-		boomer.RecordSuccess("s3", "getObject", elapsed, *resp.ContentLength)
+		elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
+		boomer.RecordSuccess("s3", "getObject", elapsed, int64(length))
 		if config.Verbose {
 			fmt.Printf("get object %s/%s\n", obj.ObjectBucket, obj.ObjectKey)
 		}
