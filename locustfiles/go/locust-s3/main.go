@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
+	"net/http"
 	"time"
 
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
@@ -37,9 +39,9 @@ import (
 
 var region = "dumpster"
 
-var sharedS3Session *session.Session
+var sharedServiceClient *s3.S3
 
-func initS3Session() *session.Session {
+func initS3Client() *s3.S3 {
 	s3Session, err := session.NewSession(&aws.Config{
 		Endpoint:         aws.String(config.LoadConf.S3.Endpoint),
 		Credentials:      credentials.NewStaticCredentials(config.LoadConf.S3.AccessKey, config.LoadConf.S3.AccessSecret, ""),
@@ -49,14 +51,29 @@ func initS3Session() *session.Session {
 	if err != nil {
 		panic("Failed to create S3 session. please check configuration")
 	}
-	return s3Session
+	// see https://docs.aws.amazon.com/sdk-for-go/v1/developer-guide/custom-http.html
+	// on why use a custom http client
+	svc := s3.New(s3Session, &aws.Config{HTTPClient: &http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			MaxIdleConnsPerHost:   100,
+			TLSHandshakeTimeout:   3 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+	}})
+	return svc
 }
 
 func initBuckets() {
-	svc := s3.New(sharedS3Session)
 	if config.LoadConf.Data.CreateBucketOnStart {
 		for _, b := range config.LoadConf.Data.Buckets {
-			if _, err := svc.CreateBucket(&s3.CreateBucketInput{Bucket: aws.String(b)}); err != nil {
+			if _, err := sharedServiceClient.CreateBucket(&s3.CreateBucketInput{Bucket: aws.String(b)}); err != nil {
 				if aerr, ok := err.(awserr.Error); ok {
 					switch aerr.Code() {
 					case s3.ErrCodeBucketAlreadyOwnedByYou:
@@ -71,10 +88,9 @@ func initBuckets() {
 }
 
 func getService() {
-	svc := s3.New(sharedS3Session)
 
 	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
-	result, err := svc.ListBuckets(nil)
+	result, err := sharedServiceClient.ListBuckets(nil)
 	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
 
 	if err != nil {
@@ -91,7 +107,6 @@ func getService() {
 }
 
 func putObject() {
-	svc := s3.New(sharedS3Session)
 	var obj objfactory.ObjectSpec
 	if err := obj.GetObject(objfactory.Write); err != nil {
 		time.Sleep(1000 * time.Millisecond)
@@ -99,7 +114,7 @@ func putObject() {
 	}
 
 	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
-	req, _ := svc.PutObjectRequest(&s3.PutObjectInput{
+	req, _ := sharedServiceClient.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:        aws.String(obj.ObjectBucket),
 		Key:           aws.String(obj.ObjectKey),
 		Body:          obj.ObjectData,
@@ -141,11 +156,10 @@ func getObject() {
 		return
 	}
 
-	svc := s3.New(sharedS3Session)
 	ctx := context.Background()
 
 	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
-	resp, err := svc.GetObjectWithContext(ctx, &s3.GetObjectInput{
+	resp, err := sharedServiceClient.GetObjectWithContext(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey),
 	}, withAcceptEncoding("identity"))
@@ -169,7 +183,6 @@ func getObject() {
 }
 
 func headObject() {
-	svc := s3.New(sharedS3Session)
 
 	var obj objfactory.ObjectSpec
 	if err := obj.GetObject(objfactory.Read); err != nil {
@@ -181,7 +194,7 @@ func headObject() {
 	}
 
 	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
-	resp, err := svc.HeadObject(&s3.HeadObjectInput{
+	resp, err := sharedServiceClient.HeadObject(&s3.HeadObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey),
 	})
@@ -199,7 +212,6 @@ func headObject() {
 }
 
 func deleteObject() {
-	svc := s3.New(sharedS3Session)
 
 	var obj objfactory.ObjectSpec
 	if err := obj.GetObject(objfactory.Delete); err != nil {
@@ -212,7 +224,7 @@ func deleteObject() {
 	time.Sleep(time.Duration(config.LoadConf.Locust.TimeDelay) * time.Millisecond)
 
 	start := time.Now().UnixNano() / config.LoadConf.Locust.TimeResolution
-	_, err := svc.DeleteObject(&s3.DeleteObjectInput{
+	_, err := sharedServiceClient.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: aws.String(obj.ObjectBucket),
 		Key:    aws.String(obj.ObjectKey)})
 	elapsed := time.Now().UnixNano()/config.LoadConf.Locust.TimeResolution - start
@@ -229,7 +241,8 @@ func deleteObject() {
 }
 
 func main() {
-	sharedS3Session = initS3Session()
+	sharedServiceClient = initS3Client()
+
 	initBuckets()
 
 	taskGetService := &boomer.Task{
