@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	pretty "github.com/tonnerre/golang-pretty"
 	"gopkg.in/yaml.v2"
@@ -126,6 +127,11 @@ func (c *LocustS3Configuration) GetConf() *LocustS3Configuration {
 	}
 	if value, present = os.LookupEnv("S3_ACCESS_SECRET"); present {
 		c.S3.AccessSecret = value
+	}
+
+	c.S3.SignatureVersion = strings.ToLower(c.S3.SignatureVersion)
+	if c.S3.SignatureVersion != "s3" && c.S3.SignatureVersion != "s3v4" {
+		log.Fatalf("invalid signature version #%v", c.S3.SignatureVersion)
 	}
 
 	/* FIXME bytefmt has difficulty to parse these stuff. giving up for now.

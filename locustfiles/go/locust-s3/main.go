@@ -27,12 +27,14 @@ import (
 
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/config"
 	"github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/objfactory"
+	v2 "github.com/twosigma/locust-s3/locustfiles/go/locust-s3/internal/v2"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
+	v4 "github.com/aws/aws-sdk-go/aws/signer/v4"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/myzhan/boomer"
 )
@@ -67,6 +69,11 @@ func initS3Client() *s3.S3 {
 			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}})
+	if config.LoadConf.S3.SignatureVersion == "s3" {
+		svc.Handlers.Sign.Swap(v4.SignRequestHandler.Name, v2.S3v2signer)
+	} else {
+		print(config.LoadConf.S3.SignatureVersion)
+	}
 	return svc
 }
 
